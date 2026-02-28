@@ -2,6 +2,14 @@
   "buildCommand": "cd frontend2 && npm install && npm run build",
   "outputDirectory": "frontend2/dist",
   "framework": null,
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Permissions-Policy", "value": "unload=*" }
+      ]
+    }
+  ],
   "rewrites": [
     { "source": "/(.*)", "destination": "/index.html" }
   ]
