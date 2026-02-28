@@ -1,0 +1,30 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --color-ghost-bg:     #0a0a0f;
+  --color-ghost-panel:  #11111a;
+  --color-ghost-border: #1a1a2e;
+  --color-ghost-accent: #7c3aed;
+  --color-ghost-neon:   #a78bfa;
+}
+
+* { box-sizing: border-box; margin: 0; padding: 0; }
+
+body {
+  background: var(--color-ghost-bg);
+  color: #e2e8f0;
+  font-family: "Inter", sans-serif;
+}
+
+/* Neon glow utility */
+.glow-purple { box-shadow: 0 0 15px rgba(124, 58, 237, 0.6); }
+.glow-green  { box-shadow: 0 0 15px rgba(16, 185, 129, 0.6); }
+.glow-red    { box-shadow: 0 0 15px rgba(239, 68, 68, 0.6);  }
+.glow-gold   { box-shadow: 0 0 15px rgba(245, 158, 11, 0.6); }
+
+/* Scrollbar */
+::-webkit-scrollbar       { width: 4px; }
+::-webkit-scrollbar-track { background: var(--color-ghost-panel); }
+::-webkit-scrollbar-thumb { background: var(--color-ghost-accent); border-radius: 2px; }
