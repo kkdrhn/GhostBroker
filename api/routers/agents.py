@@ -2,9 +2,18 @@
 from __future__ import annotations
 
 from fastapi import APIRouter, HTTPException, Query
+from pydantic import BaseModel
 from api.models.schemas import AgentResponse, AgentDecisionResponse, CalldataResponse, AgentStrategy
 
 router = APIRouter()
+
+
+# ── Request body for mint calldata ────────────────────────────────────────────
+class MintCalldataRequest(BaseModel):
+    owner:           str
+    risk_appetite:   int
+    strategy:        int   # 0=CONSERVATIVE 1=BALANCED 2=AGGRESSIVE
+    initial_capital: str   # wei string
 
 
 @router.get("", response_model=list[AgentResponse])
@@ -26,15 +35,22 @@ async def get_agent(agent_id: int):
     raise HTTPException(status_code=404, detail="Agent not found")
 
 
-@router.post("/mint", response_model=CalldataResponse)
-async def mint_agent(
-    risk_appetite:   int             = Query(..., ge=0, le=100),
-    strategy:        AgentStrategy   = Query(...),
-    initial_capital: str             = Query(..., description="Capital in wei"),
-):
-    """Returns calldata for BrokerAgent.mint() — user signs on frontend."""
-    # TODO: ABI-encode BrokerAgent.mint(riskAppetite, strategy, initialCapital)
-    return CalldataResponse(to="", calldata="0x", value="0x0")
+@router.post("/mint/calldata", response_model=CalldataResponse)
+async def mint_agent_calldata(body: MintCalldataRequest):
+    """
+    Returns ABI-encoded calldata for BrokerAgent.mint().
+    Frontend sends this via wagmi sendTransaction — user signs, gas paid in MON.
+    """
+    # TODO: ABI-encode BrokerAgent.mint(owner, riskAppetite, strategy, initialCapital)
+    # import api.services.chain as chain
+    # calldata = chain.encode_mint(body.owner, body.risk_appetite, body.strategy, body.initial_capital)
+    import os
+    contract = os.getenv("BROKER_AGENT_ADDRESS", "0x0000000000000000000000000000000000000001")
+    return CalldataResponse(
+        to=contract,
+        calldata="0x",   # TODO: real ABI encoding
+        value="0x0",
+    )
 
 
 @router.get("/{agent_id}/history", response_model=list[AgentDecisionResponse])
@@ -43,17 +59,29 @@ async def agent_history(agent_id: int, limit: int = Query(50, le=200)):
     return []
 
 
-@router.get("/{agent_id}/positions")
-async def agent_positions(agent_id: int):
+@router.get("/{agent_id}/orders")
+async def agent_orders(agent_id: int, status: str | None = Query(None)):
     """Open bids/asks for this agent currently in the order book."""
     # TODO: GhostMarket.getAgentOpenOrders(agent_id)
     return []
 
 
+@router.get("/{agent_id}/positions")
+async def agent_positions(agent_id: int):
+    """Open positions alias (backward compat)."""
+    return []
+
+
+@router.get("/{agent_id}/lifecycle")
+async def agent_lifecycle(agent_id: int):
+    """BrokerAgent lifecycle events: CREATED, ELITE_PROMOTION, BANKRUPTCY, REVIVAL."""
+    # TODO: filter Transfer + custom events for agent_id
+    return {"events": []}
+
+
 @router.get("/{agent_id}/pnl")
 async def agent_pnl(agent_id: int):
     """Realized + unrealized P&L breakdown."""
-    # TODO: compute from MatchEngine trade history
     return {"realized": "0", "unrealized": "0", "total": "0"}
 
 
