@@ -1,12 +1,12 @@
 """
 Ghost Broker — Aggressive Agent Brain
 High-risk, momentum-based strategy.
-Uses LangChain LLM to reason about entry/exit signals.
+Uses LangChain + Google Gemini to reason about entry/exit signals.
 """
 from __future__ import annotations
 
 import os
-from langchain_openai import ChatOpenAI
+from langchain_google_genai import ChatGoogleGenerativeAI
 from langchain.prompts import ChatPromptTemplate
 from langchain.output_parsers import PydanticOutputParser
 from pydantic import BaseModel, Field
@@ -49,10 +49,10 @@ Rules:
 class AggressiveAgent:
     def __init__(self, dna: AgentDNA):
         self.dna = dna
-        self._llm = ChatOpenAI(
-            model=os.getenv("OPENAI_MODEL", "gpt-4o-mini"),
+        self._llm = ChatGoogleGenerativeAI(
+            model=os.getenv("GEMINI_MODEL", "gemini-2.0-flash"),
             temperature=0.7,
-            api_key=os.getenv("OPENAI_API_KEY"),
+            google_api_key=os.getenv("GEMINI_API_KEY"),
         )
         self._parser = PydanticOutputParser(pydantic_object=LLMDecision)
         self._prompt = ChatPromptTemplate.from_messages([("system", SYSTEM_PROMPT)])
