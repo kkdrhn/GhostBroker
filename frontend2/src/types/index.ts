@@ -4,7 +4,7 @@ export type AgentStrategy = 'AGGRESSIVE' | 'BALANCED' | 'CONSERVATIVE';
 // UI alias (lowercase) used only in RiskDNASlider
 export type Strategy = 'aggressive' | 'balanced' | 'conservative';
 export type TradeAction = 'BID' | 'ASK' | 'HOLD' | 'PARTNER';
-export type Commodity = 'GHOST_ORE' | 'PHANTOM_GAS' | 'VOID_CHIP' | 'MON_USDC';
+export type Commodity = 'ETH' | 'SOL' | 'MATIC' | 'BNB';
 export type OrderSide = 'BID' | 'ASK';
 export type OrderStatus = 'OPEN' | 'MATCHED' | 'EXPIRED' | 'CANCELLED';
 export type CovenantStatus = 'PROPOSED' | 'ACTIVE' | 'DISSOLVED';
@@ -153,10 +153,12 @@ export interface EngineStatusResponse {
 }
 
 export interface OracleFeedResponse {
-  commodity: Commodity;
-  price: string;
+  commodity: Commodity | string;
+  asset?: string;        // backend alias
+  price: string | number;
+  confidence?: number;
   updated_at: number;
-  source: string;
+  source?: string;
 }
 
 // ── WebSocket event union ─────────────────────────────────────────────────────

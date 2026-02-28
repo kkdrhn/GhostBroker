@@ -9,22 +9,32 @@ import type { AgentResponse } from '@/types';
 
 // Map AgentResponse → AgentCard's UI Agent shape
 function toUIAgent(a: AgentResponse) {
+  const cap = parseFloat(a.capital ?? '0') / 1e18;
+  const initCap = parseFloat(a.initial_capital ?? '0') / 1e18;
+  const wins = a.win_count ?? 0;
+  const losses = a.loss_count ?? 0;
+  const total = wins + losses || 1;
   return {
     id: String(a.token_id),
     name: a.name ?? `Agent #${a.token_id}`,
-    strategy: (a.strategy ?? 'BALANCED').toLowerCase() as 'aggressive' | 'balanced' | 'conservative',
-    state: (a.state ?? 'ACTIVE').toLowerCase() as 'active' | 'elite' | 'bankrupt' | 'revived',
-    capital: parseFloat(a.capital ?? '0') / 1e18,
-    riskAppetite: a.risk_appetite ?? 50,
-    winRate: a.win_count && (a.win_count + (a.loss_count ?? 0)) > 0
-      ? a.win_count / (a.win_count + (a.loss_count ?? 0))
-      : 0.5,
-    totalTrades: (a.win_count ?? 0) + (a.loss_count ?? 0),
-    reputationScore: a.reputation_score ?? 5000,
+    tier: (a.state ?? 'ACTIVE') as 'ACTIVE' | 'ELITE' | 'BANKRUPT' | 'REVIVED',
     owner: a.owner_address ?? '',
-    createdAt: a.created_at ?? '',
-    lastAction: a.last_action ?? '',
-    commodity: (a.preferred_commodity ?? 'IRON').toLowerCase() as 'iron' | 'copper' | 'silicon' | 'energy',
+    riskDNA: {
+      riskAppetite: a.risk_appetite ?? 50,
+      strategy: (a.strategy ?? 'BALANCED').toLowerCase() as 'aggressive' | 'balanced' | 'conservative',
+      startingCapital: initCap,
+    },
+    capital: cap,
+    maxCapital: Math.max(cap, initCap * 2),
+    winRate: +((wins / total) * 100).toFixed(1),
+    totalTrades: total,
+    profitFactor: wins > 0 ? +(wins / Math.max(losses, 1)).toFixed(2) : 0,
+    maxDrawdown: 0,
+    avgTradeDuration: '—',
+    reputation: a.reputation_score ?? 5000,
+    totalStaked: 0,
+    apyMultiplier: 1,
+    createdAtBlock: a.created_at ?? 0,
   };
 }
 

@@ -1,1 +1,56 @@
-[]
+[
+  {
+    "token_id": 1,
+    "owner_address": "0x26cb063691e1e04269df2f27284119fd95b63d28",
+    "name": "Agent #1",
+    "risk_appetite": 38,
+    "strategy": "BALANCED",
+    "initial_capital": "1000000000000000000",
+    "capital": "1160678595738531840",
+    "state": "ACTIVE",
+    "win_count": 124,
+    "loss_count": 149,
+    "created_at": 1772280742,
+    "last_tick_at": 1772284483,
+    "score": 5000,
+    "reputation_score": 5000,
+    "last_action": "HOLD",
+    "preferred_commodity": "GHOST_ORE"
+  },
+  {
+    "token_id": 2,
+    "owner_address": "0x1234",
+    "name": "Test",
+    "risk_appetite": 50,
+    "strategy": "BALANCED",
+    "initial_capital": "100000000000000000000",
+    "capital": "108169496877521747968",
+    "state": "ACTIVE",
+    "win_count": 64,
+    "loss_count": 77,
+    "created_at": 1772282354,
+    "last_tick_at": 1772284491,
+    "score": 5000,
+    "reputation_score": 5000,
+    "last_action": "BID",
+    "preferred_commodity": "GHOST_ORE"
+  },
+  {
+    "token_id": 3,
+    "owner_address": "0x26cb063691e1e04269df2f27284119fd95b63d28",
+    "name": "mlll",
+    "risk_appetite": 37,
+    "strategy": "BALANCED",
+    "initial_capital": "1000000000000000000",
+    "capital": "1032733135678382464",
+    "state": "ACTIVE",
+    "win_count": 26,
+    "loss_count": 39,
+    "created_at": 1772282838,
+    "last_tick_at": 1772284499,
+    "score": 5000,
+    "reputation_score": 5000,
+    "last_action": "HOLD",
+    "preferred_commodity": "GHOST_ORE"
+  }
+]

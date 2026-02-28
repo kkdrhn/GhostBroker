@@ -8,8 +8,17 @@ import LiveFeed from '@/components/ghost/LiveFeed';
 import CommodityTicker from '@/components/ghost/CommodityTicker';
 import type { AgentResponse, OracleFeedResponse, Commodity } from '@/types';
 
-/** Convert wei string to float MON */
-const wei2mon = (wei: string) => Number(BigInt(wei) / BigInt('1000000000')) / 1e9;
+/** Convert wei string OR plain float string to MON float */
+const wei2mon = (wei: string) => {
+  try {
+    const n = BigInt(wei);
+    // 1e18 wei = 1 MON
+    return Number(n / BigInt('1000000000000000000')) +
+           Number(n % BigInt('1000000000000000000')) / 1e18;
+  } catch {
+    return parseFloat(wei) || 0;
+  }
+};
 
 /** Map AgentResponse → UI Agent shape expected by AgentCard */
 function toUIAgent(a: AgentResponse) {
@@ -20,7 +29,7 @@ function toUIAgent(a: AgentResponse) {
   const total = wins + losses || 1;
   return {
     id: String(a.token_id),
-    name: `Agent #${a.token_id}`,
+    name: a.name ?? `Agent #${a.token_id}`,
     tier: a.state,
     owner: a.owner_address,
     riskDNA: {
@@ -45,23 +54,26 @@ function toUIAgent(a: AgentResponse) {
 /** Map OracleFeedResponse → UI CommodityPrice shape */
 function toUICommodity(f: OracleFeedResponse) {
   return {
-    commodity: f.commodity,
-    label: f.commodity,
-    price: Number(f.price),
+    commodity: (f.commodity || f.asset || '') as Commodity,
+    label:     (f.commodity || f.asset || '') as string,
+    price:     Number(f.price),
     change24h: 0,
-    history: [] as number[],
+    history:   [] as number[],
   };
 }
 
-const COMMODITY_LIST: Commodity[] = ['GHOST_ORE', 'PHANTOM_GAS', 'VOID_CHIP', 'MON_USDC'];
+const COMMODITY_LIST: Commodity[] = ['ETH', 'SOL', 'MATIC', 'BNB'];
 
 const Arena = () => {
   const { recentTrades, handleWSEvent, setAgents, setLeaderboard, prices } = useGhostStore();
+  const setPrices = useGhostStore((s) => s.prices);
+  const handleWS = useGhostStore((s) => s.handleWSEvent);
 
   // ── REST fetches ────────────────────────────────────────────────────────────
   const { data: agentData } = useQuery({
     queryKey: ['agents'],
     queryFn: () => fetchAgents(50),
+    refetchInterval: 5000,
     onSuccess: (data) => setAgents(data),
   } as Parameters<typeof useQuery>[0]);
 
@@ -71,20 +83,30 @@ const Arena = () => {
     onSuccess: (data) => setLeaderboard(data),
   } as Parameters<typeof useQuery>[0]);
 
+  // İlk yüklemede REST'ten fiyatları çek
+  const { data: oracleFeeds } = useQuery({
+    queryKey: ['oracle-feeds'],
+    queryFn: fetchOracleFeeds,
+    refetchInterval: 3000,
+  } as Parameters<typeof useQuery>[0]);
+
   // ── WebSocket ───────────────────────────────────────────────────────────────
   useGhostWS({
     channels: ['market.trades', 'agent.lifecycle', 'agent.decisions', 'oracle.prices', 'chain.block'],
     onEvent: handleWSEvent,
   });
 
-  const uiAgents = (agentData ?? []).map(toUIAgent);
+  const uiAgents = ((agentData as AgentResponse[]) ?? []).map(toUIAgent);
 
-  // Commodity prices from WS or fallback placeholders
+  // WS prices öncelikli, yoksa REST oracle feeds
   const commodityTickers = COMMODITY_LIST.map((c) => {
-    const feed = prices[c];
-    return feed
-      ? toUICommodity(feed)
-      : { commodity: c, label: c, price: 0, change24h: 0, history: [] };
+    const wsFeed = prices[c];
+    if (wsFeed) return toUICommodity(wsFeed);
+    const restFeed = (oracleFeeds as OracleFeedResponse[] | undefined)?.find(
+      (f) => (f.commodity ?? f.asset) === c
+    );
+    if (restFeed) return toUICommodity(restFeed);
+    return { commodity: c, label: c, price: 0, change24h: 0, history: [] };
   });
 
   return (
