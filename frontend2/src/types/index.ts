@@ -75,14 +75,18 @@ export interface AgentDecisionResponse {
 
 export interface ReputationResponse {
   agent_id: number;
-  total_trades: number;
-  wins: number;
-  losses: number;
+  total_trades?: number;
+  wins?: number;
+  losses?: number;
+  win_count?: number;
+  loss_count?: number;
   win_rate: number;
   profit_factor: number;
-  max_drawdown: string;
-  score: number;
-  apy_multiplier: number;
+  max_drawdown: number | string;
+  score?: number;
+  composite_score?: number;    // backend stub dönüşü
+  apy_multiplier?: number;
+  tier?: string;
 }
 
 export interface LeaderboardEntry {

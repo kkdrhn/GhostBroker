@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import {
@@ -7,7 +7,6 @@ import {
   fetchAgentDecisions,
   fetchAgentLifecycle,
   fetchAgentOrders,
-  fetchVault,
 } from '@/lib/api';
 import { MONADSCAN_ADDR } from '@/config/chain';
 import AgentAvatar from '@/components/ghost/AgentAvatar';
@@ -16,14 +15,27 @@ import CapitalChart from '@/components/ghost/CapitalChart';
 import LifecycleTimeline from '@/components/ghost/LifecycleTimeline';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { MOCK_CAPITAL_HISTORY } from '@/data/mock';
 
-const wei2mon = (wei: string) => Number(BigInt(wei) / BigInt('1000000000')) / 1e9;
+// ── Güvenli BigInt dönüşümü — undefined/null/NaN çökmez ──────────────────────
+const wei2mon = (wei: unknown): number => {
+  try {
+    const s = String(wei ?? '0').split('.')[0]; // float olabilir, noktayı at
+    if (!s || s === 'undefined' || s === 'null' || s === 'NaN') return 0;
+    return Number(BigInt(s) / BigInt('1000000000')) / 1e9;
+  } catch {
+    return 0;
+  }
+};
 
 const AgentDetail = () => {
   const { id } = useParams<{ id: string }>();
   const tokenId = Number(id);
+
+  // Decisions sayfalama state
+  const [decPage, setDecPage] = useState(1);
+  const DEC_PAGE_SIZE = 20;
 
   const { data: agent, isLoading: agentLoading } = useQuery({
     queryKey: ['agent', tokenId],
@@ -37,10 +49,19 @@ const AgentDetail = () => {
     enabled: !isNaN(tokenId),
   });
 
-  const { data: decisions = [] } = useQuery({
-    queryKey: ['decisions', tokenId],
-    queryFn: () => fetchAgentDecisions(tokenId, 25),
+  // Sayfalı decisions — backend /v1/agents/{id}/decisions?page=X&limit=Y
+  const { data: decisionPage, isLoading: decLoading } = useQuery({
+    queryKey: ['decisions', tokenId, decPage],
+    queryFn: async () => {
+      const res = await fetch(`http://localhost:8000/v1/agents/${tokenId}/decisions?page=${decPage}&limit=${DEC_PAGE_SIZE}`);
+      if (!res.ok) return { items: [], total: 0, total_pages: 1 };
+      const data = await res.json();
+      // Eski liste formatı veya yeni sayfalı format
+      if (Array.isArray(data)) return { items: data, total: data.length, total_pages: 1 };
+      return data as { items: unknown[]; total: number; total_pages: number };
+    },
     enabled: !isNaN(tokenId),
+    staleTime: 5000,
   });
 
   const { data: lifecycle } = useQuery({
@@ -55,12 +76,6 @@ const AgentDetail = () => {
     enabled: !isNaN(tokenId),
   });
 
-  const { data: vault } = useQuery({
-    queryKey: ['vault', tokenId],
-    queryFn: () => fetchVault(tokenId),
-    enabled: !isNaN(tokenId),
-  });
-
   if (agentLoading || !agent) {
     return (
       <div className="max-w-6xl mx-auto p-6 text-muted-foreground text-sm animate-pulse">
@@ -70,24 +85,24 @@ const AgentDetail = () => {
   }
 
   const capital = wei2mon(agent.capital);
-  const wins = agent.win_count;
-  const losses = agent.loss_count;
-  const total = wins + losses || 1;
+  const wins   = agent.win_count   ?? 0;
+  const losses = agent.loss_count  ?? 0;
+  const total  = wins + losses || 1;
   const winRate = +((wins / total) * 100).toFixed(1);
 
   const riskDNA = {
-    riskAppetite: agent.risk_appetite,
-    strategy: agent.strategy.toLowerCase() as 'aggressive' | 'balanced' | 'conservative',
+    riskAppetite: agent.risk_appetite ?? 50,
+    strategy: (agent.strategy ?? 'balanced').toLowerCase() as 'aggressive' | 'balanced' | 'conservative',
     startingCapital: wei2mon(agent.initial_capital),
   };
 
   const stats = [
-    { label: 'Total Trades', value: total.toString() },
-    { label: 'Win Rate',     value: `${winRate}%` },
-    { label: 'Profit Factor', value: rep ? rep.profit_factor.toFixed(2) : '—' },
-    { label: 'Max Drawdown', value: rep ? `${rep.max_drawdown}` : '—' },
-    { label: 'Score',        value: rep ? `${rep.score}/10000` : '—' },
-    { label: 'Capital',      value: `${capital.toLocaleString()} MON` },
+    { label: 'Total Trades',  value: (wins + losses).toString() },
+    { label: 'Win Rate',      value: `${winRate}%` },
+    { label: 'Profit Factor', value: rep?.profit_factor != null ? String(rep.profit_factor.toFixed(2)) : '—' },
+    { label: 'Max Drawdown',  value: rep?.max_drawdown  != null ? `${rep.max_drawdown}%` : '—' },
+    { label: 'Score',         value: rep?.composite_score != null ? `${rep.composite_score}` : '—' },
+    { label: 'Capital',       value: `${capital.toLocaleString(undefined, { maximumFractionDigits: 4 })} MON` },
   ];
 
   const lifecycleEvents = (lifecycle?.events ?? []).map((e) => ({
@@ -96,6 +111,10 @@ const AgentDetail = () => {
     timestamp: e.timestamp,
     details: e.details,
   }));
+
+  const decisions     = (decisionPage?.items ?? []) as Record<string, unknown>[];
+  const decTotal      = decisionPage?.total      ?? 0;
+  const decTotalPages = decisionPage?.total_pages ?? 1;
 
   return (
     <div className="max-w-6xl mx-auto p-6">
@@ -128,7 +147,10 @@ const AgentDetail = () => {
 
         {/* Performance tab */}
         <TabsContent value="performance" className="mt-4 space-y-6">
-          <CapitalChart data={[]} />
+          <div className="bg-card border border-border rounded-lg p-4">
+            <div className="text-sm font-bold text-foreground mb-4">Capital History (Mock Data)</div>
+            <CapitalChart data={MOCK_CAPITAL_HISTORY} />
+          </div>
           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
             {stats.map((s) => (
               <div key={s.label} className="p-3 rounded-lg border border-border bg-card text-center">
@@ -183,7 +205,7 @@ const AgentDetail = () => {
             <Table>
               <TableHeader>
                 <TableRow className="border-border hover:bg-transparent">
-                  <TableHead className="text-[10px]">BLOCK</TableHead>
+                  <TableHead className="text-[10px]">ZAMAN</TableHead>
                   <TableHead className="text-[10px]">ACTION</TableHead>
                   <TableHead className="text-[10px]">ASSET</TableHead>
                   <TableHead className="text-[10px] text-right">PRICE</TableHead>
@@ -193,64 +215,88 @@ const AgentDetail = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {decisions.map((d) => (
-                  <TableRow key={d.tx_hash} className="border-border text-xs">
-                    <TableCell className="font-mono text-muted-foreground">{d.block_number}</TableCell>
-                    <TableCell className={cn('font-bold',
-                      d.action === 'BID' ? 'text-ghost-green' :
-                      d.action === 'ASK' ? 'text-ghost-red' :
-                      'text-muted-foreground'
-                    )}>{d.action}</TableCell>
-                    <TableCell>{d.commodity}</TableCell>
-                    <TableCell className="text-right font-mono">{d.price}</TableCell>
-                    <TableCell className="text-right font-mono">{d.qty}</TableCell>
-                    <TableCell className="text-right">{(d.confidence * 100).toFixed(0)}%</TableCell>
-                    <TableCell className="max-w-xs truncate text-muted-foreground">{d.reasoning}</TableCell>
+                {decLoading && (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-4 animate-pulse">
+                      Yükleniyor…
+                    </TableCell>
                   </TableRow>
-                ))}
-                {decisions.length === 0 && (
+                )}
+                {!decLoading && decisions.map((d, i) => {
+                  const action   = String(d.action     ?? '—');
+                  const asset    = String(d.commodity  ?? '—');
+                  const price    = String(d.price      ?? '—');
+                  const qty      = String(d.qty        ?? '—');
+                  const conf     = parseFloat(String(d.confidence ?? 0));
+                  const reason   = String(d.reasoning  ?? '');
+                  const ts       = Number(d.timestamp  ?? d.block_number ?? 0);
+                  const timeStr  = ts ? new Date(ts > 1e12 ? ts : ts * 1000).toLocaleTimeString('tr-TR', { hour12: false }) : '—';
+                  const txHash   = String(d.tx_hash ?? i);
+                  return (
+                    <TableRow key={txHash} className="border-border text-xs">
+                      <TableCell className="font-mono text-muted-foreground">{timeStr}</TableCell>
+                      <TableCell className={cn('font-bold',
+                        action === 'BID'  ? 'text-ghost-green' :
+                        action === 'ASK'  ? 'text-red-400' :
+                        action === 'HOLD' ? 'text-yellow-400' : 'text-purple-400'
+                      )}>{action}</TableCell>
+                      <TableCell>{asset}</TableCell>
+                      <TableCell className="text-right font-mono">{price}</TableCell>
+                      <TableCell className="text-right font-mono">{qty}</TableCell>
+                      <TableCell className="text-right">{(conf * 100).toFixed(0)}%</TableCell>
+                      <TableCell className="max-w-xs truncate text-muted-foreground text-[10px]">{reason}</TableCell>
+                    </TableRow>
+                  );
+                })}
+                {!decLoading && decisions.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center text-xs text-muted-foreground py-4">
-                      No decisions yet
+                      Henüz karar yok (~20s bekle)
                     </TableCell>
                   </TableRow>
                 )}
               </TableBody>
             </Table>
           </div>
+          {/* Sayfalama */}
+          {decTotalPages > 1 && (
+            <div className="flex items-center justify-between mt-3 px-1">
+              <span className="text-[10px] text-muted-foreground font-mono">
+                {decTotal} karar · sayfa {decPage}/{decTotalPages}
+              </span>
+              <div className="flex gap-1">
+                <button
+                  onClick={() => setDecPage(p => Math.max(1, p - 1))}
+                  disabled={decPage <= 1}
+                  className="text-[10px] px-3 py-1 rounded bg-white/5 text-muted-foreground disabled:opacity-30 hover:bg-white/10"
+                >‹ Önceki</button>
+                <button
+                  onClick={() => setDecPage(p => Math.min(decTotalPages, p + 1))}
+                  disabled={decPage >= decTotalPages}
+                  className="text-[10px] px-3 py-1 rounded bg-white/5 text-muted-foreground disabled:opacity-30 hover:bg-white/10"
+                >Sonraki ›</button>
+              </div>
+            </div>
+          )}
         </TabsContent>
 
         {/* Vault / stake tab */}
         <TabsContent value="stake" className="mt-4">
-          {vault ? (
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              {[
-                { label: 'Total Deposited', value: `${wei2mon(vault.total_deposited).toLocaleString()} GHOST` },
-                { label: 'Total Rewards', value: `${wei2mon(vault.total_rewards).toLocaleString()} GHOST` },
-                { label: 'Total Shares', value: wei2mon(vault.total_shares).toLocaleString() },
-                { label: 'APY Multiplier', value: `${(vault.apy_multiplier / 100).toFixed(2)}x` },
-              ].map((s) => (
-                <div key={s.label} className="p-4 rounded-lg border border-border bg-card text-center">
-                  <div className="text-xl font-bold text-foreground">{s.value}</div>
-                  <div className="text-[10px] text-muted-foreground tracking-wider uppercase mt-1">{s.label}</div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div className="p-8 text-center text-sm text-muted-foreground animate-pulse">
-              Loading vault data…
-            </div>
-          )}
-          <div className="mt-4 p-4 rounded-lg border border-primary/30 bg-primary/5">
-            <div className="flex items-center justify-between">
-              <div>
-                <div className="text-sm font-bold text-foreground">Stake on this agent</div>
-                <div className="text-xs text-muted-foreground">Go to the Stake page to deposit GHOST</div>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {[
+              { label: 'Strateji',    value: agent?.strategy ?? '—' },
+              { label: 'Kapital',     value: `${capital.toLocaleString()} MON` },
+              { label: 'Karar Sayısı', value: `${decTotal} karar` },
+              { label: 'Win Rate',    value: rep ? `${(rep.win_rate * 100).toFixed(1)}%` : '—' },
+            ].map((s) => (
+              <div key={s.label} className="p-4 rounded-lg border border-border bg-card text-center">
+                <div className="text-xl font-bold text-foreground">{s.value}</div>
+                <div className="text-[10px] text-muted-foreground tracking-wider uppercase mt-1">{s.label}</div>
               </div>
-              <Button size="sm" className="text-xs" onClick={() => window.location.href = '/stake'}>
-                Go to Stake
-              </Button>
-            </div>
+            ))}
+          </div>
+          <div className="mt-4 p-4 rounded-lg border border-border bg-card/50 text-center text-xs text-muted-foreground">
+            Staking devre dışı bırakıldı.
           </div>
         </TabsContent>
       </Tabs>
