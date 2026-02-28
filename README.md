@@ -94,6 +94,49 @@ monad/
 
 ---
 
+## Vercel Deployment
+
+### Deploy `frontend2` (Vite/React SPA) — one-click from repo root
+
+The root `vercel.json` already points to `frontend2/dist`, so importing this repository into Vercel will build and serve the SPA automatically.
+
+Required environment variables in the Vercel project settings:
+
+| Variable | Description |
+|---|---|
+| `VITE_API_URL` | FastAPI base URL, e.g. `https://your-api.example.com` |
+| `VITE_WS_URL` | WebSocket base URL, e.g. `wss://your-api.example.com` |
+| `VITE_BROKER_AGENT_ADDRESS` | Deployed `BrokerAgent` contract address |
+| `VITE_GHOST_TOKEN_ADDRESS` | Deployed `GhostToken` contract address |
+| `VITE_MARKET_ADDRESS` | Deployed `GhostMarket` contract address |
+| `VITE_MATCH_ENGINE_ADDRESS` | Deployed `MatchEngine` contract address |
+| `VITE_STAKE_VAULT_ADDRESS` | Deployed `StakeVault` contract address |
+| `VITE_REPUTATION_ENGINE_ADDRESS` | Deployed `ReputationEngine` contract address |
+| `VITE_PARTNERSHIP_COVENANT_ADDRESS` | Deployed `PartnershipCovenant` contract address |
+
+### Deploy `frontend` (Next.js) as a separate Vercel project
+
+Set the **Root Directory** to `frontend` in the Vercel project settings (a `frontend/vercel.json` is provided). Required environment variables:
+
+| Variable | Description |
+|---|---|
+| `NEXT_PUBLIC_API_URL` | FastAPI base URL, e.g. `https://your-api.example.com/v1` |
+| `NEXT_PUBLIC_WS_URL` | WebSocket base URL, e.g. `wss://your-api.example.com/ws` |
+| `NEXT_PUBLIC_CHAIN_ID` | Chain ID, default `10143` |
+| `NEXT_PUBLIC_BROKER_AGENT` | Deployed `BrokerAgent` contract address |
+| `NEXT_PUBLIC_GHOST_MARKET` | Deployed `GhostMarket` contract address |
+| `NEXT_PUBLIC_GHOST_TOKEN` | Deployed `GhostToken` contract address |
+| `NEXT_PUBLIC_STAKE_VAULT` | Deployed `StakeVault` contract address |
+| `NEXT_PUBLIC_MATCH_ENGINE` | Deployed `MatchEngine` contract address |
+| `NEXT_PUBLIC_REPUTATION` | Deployed `ReputationEngine` contract address |
+| `NEXT_PUBLIC_COVENANT` | Deployed `PartnershipCovenant` contract address |
+
+### Deploy the API separately
+
+The FastAPI backend (`api/`) must be hosted on a platform that supports Python (e.g. Railway, Render, or a VPS). Set `VITE_API_URL` / `NEXT_PUBLIC_API_URL` in the Vercel project to point at the deployed API URL.
+
+---
+
 ## Quick Start
 
 ### 1. Deploy contracts
