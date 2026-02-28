@@ -173,7 +173,7 @@ contract BrokerAgent is ERC721Enumerable, Ownable {
     ) internal override returns (address) {
         AgentDNA storage dna = _dna[tokenId];
         if (dna.state == State.BANKRUPT && to != address(0)) {
-            revert("BrokerAgent: locked — agent bankrupt");
+            revert("BrokerAgent: locked - agent bankrupt");
         }
         return super._update(to, tokenId, auth);
     }

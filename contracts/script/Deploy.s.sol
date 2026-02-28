@@ -13,11 +13,9 @@ import "../src/PartnershipCovenant.sol";
 /// @notice Full deployment script for Ghost Broker on Monad Testnet (Chain ID: 10143)
 contract Deploy is Script {
     function run() external {
-        uint256 deployerPrivKey = vm.envUint("DEPLOYER_PRIVATE_KEY");
-        address deployer        = vm.addr(deployerPrivKey);
-        address treasury        = vm.envOr("TREASURY_ADDRESS", deployer);
+        address treasury = vm.envOr("TREASURY_ADDRESS", msg.sender);
 
-        vm.startBroadcast(deployerPrivKey);
+        vm.startBroadcast();
 
         // 1. GhostToken
         GhostToken ghostToken = new GhostToken(treasury);
@@ -57,12 +55,12 @@ contract Deploy is Script {
         // BrokerAgent trusts MatchEngine for capital updates
         brokerAgent.setMatchEngine(address(matchEngine));
 
-        // GhostMarket: AGENT_ROLE → any caller (demo), ENGINE_ROLE → MatchEngine
-        ghostMarket.grantRole(ghostMarket.AGENT_ROLE(),  deployer);
+        // GhostMarket: AGENT_ROLE → deployer (demo), ENGINE_ROLE → MatchEngine
+        ghostMarket.grantRole(ghostMarket.AGENT_ROLE(),  msg.sender);
         ghostMarket.grantRole(ghostMarket.ENGINE_ROLE(), address(matchEngine));
 
         // MatchEngine needs KEEPER_ROLE granted to off-chain keeper EOA
-        matchEngine.grantRole(matchEngine.KEEPER_ROLE(), deployer);
+        matchEngine.grantRole(matchEngine.KEEPER_ROLE(), msg.sender);
 
         // ReputationEngine: RECORDER_ROLE → MatchEngine
         reputationEngine.grantRole(reputationEngine.RECORDER_ROLE(), address(matchEngine));
@@ -71,31 +69,22 @@ contract Deploy is Script {
         ghostToken.grantRole(ghostToken.BURNER_ROLE(), address(matchEngine));
 
         // Transfer initial GHOST to MatchEngine for fee pool
-        uint256 seedAmount = 10_000 ether; // 10,000 GHOST for demo fees
-        // treasury must approve first — transfer from treasury if it's the deployer
-        if (treasury == deployer) {
+        uint256 seedAmount = 10_000 ether;
+        if (treasury == msg.sender) {
             ghostToken.transfer(address(matchEngine), seedAmount);
         }
 
         vm.stopBroadcast();
 
         // ── Seed 5 demo BrokerAgents ────────────────────────────────────────────
-        vm.startBroadcast(deployerPrivKey);
+        vm.startBroadcast();
 
-        uint256 agentCapital = 1_000 ether; // 1,000 GHOST each
+        uint256 agentCapital = 1_000 ether;
 
-        // Approve BrokerAgent to take capital (simplified: no token transfer in mint for demo)
-        // Actual production would escrow capital via token transfer in mint()
-
-        // Agent 1: AGGRESSIVE
         brokerAgent.mint(90, BrokerAgent.Strategy.AGGRESSIVE,   agentCapital);
-        // Agent 2: BALANCED
         brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED,     agentCapital);
-        // Agent 3: CONSERVATIVE
         brokerAgent.mint(20, BrokerAgent.Strategy.CONSERVATIVE, agentCapital);
-        // Agent 4: AGGRESSIVE high-risk
         brokerAgent.mint(95, BrokerAgent.Strategy.AGGRESSIVE,   agentCapital * 2);
-        // Agent 5: BALANCED low-capital
         brokerAgent.mint(40, BrokerAgent.Strategy.BALANCED,     agentCapital / 2);
 
         console2.log("Seeded 5 demo BrokerAgents");

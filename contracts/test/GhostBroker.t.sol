@@ -65,19 +65,21 @@ contract GhostBrokerTest is Test {
         vm.prank(alice);
         uint256 tokenId = brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED, 100 ether);
 
-        // MatchEngine zeroes out capital
+        // MatchEngine zeroes out capital — call as matchEngine
+        vm.prank(address(matchEngine));
         brokerAgent.updateCapital(tokenId, 0, false);
         assertEq(uint8(brokerAgent.getState(tokenId)), uint8(BrokerAgent.State.BANKRUPT));
 
-        // Locked — cannot transfer
+        // Locked - cannot transfer
         vm.prank(alice);
-        vm.expectRevert("BrokerAgent: locked — agent bankrupt");
+        vm.expectRevert("BrokerAgent: locked - agent bankrupt");
         brokerAgent.transferFrom(alice, bob, tokenId);
     }
 
     function test_AgentRevival() public {
         vm.prank(alice);
         uint256 tokenId = brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED, 100 ether);
+        vm.prank(address(matchEngine));
         brokerAgent.updateCapital(tokenId, 0, false);
         assertTrue(brokerAgent.isBankrupt(tokenId));
 
@@ -89,7 +91,8 @@ contract GhostBrokerTest is Test {
     function test_ElitePromotion() public {
         vm.prank(alice);
         uint256 tokenId = brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED, 100 ether);
-        // 10x initial = 1000 ether → ELITE
+        // 10x initial = 1000 ether → ELITE — call as matchEngine
+        vm.prank(address(matchEngine));
         brokerAgent.updateCapital(tokenId, 1_000 ether, true);
         assertTrue(brokerAgent.isElite(tokenId));
     }
@@ -99,8 +102,13 @@ contract GhostBrokerTest is Test {
         vm.prank(alice);
         uint256 agentId = brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED, 500 ether);
 
+        // Give alice AGENT_ROLE so she can post orders
+        ghostMarket.grantRole(ghostMarket.AGENT_ROLE(), alice);
+
+        bytes32 commodity = ghostMarket.GHOST_ORE();
+        vm.prank(alice);
         bytes32 orderId = ghostMarket.postOrder(
-            agentId, GhostMarket.GHOST_ORE, GhostMarket.OrderSide.BID,
+            agentId, commodity, GhostMarket.OrderSide.BID,
             1 ether, 10 ether, 50
         );
 
@@ -117,8 +125,9 @@ contract GhostBrokerTest is Test {
         vm.prank(alice);
         uint256 agentId = brokerAgent.mint(50, BrokerAgent.Strategy.BALANCED, 500 ether);
 
+        bytes32 commodity = ghostMarket.GHOST_ORE();
         bytes32 orderId = ghostMarket.postOrder(
-            agentId, GhostMarket.GHOST_ORE, GhostMarket.OrderSide.BID,
+            agentId, commodity, GhostMarket.OrderSide.BID,
             1 ether, 10 ether, 5 // 5 block TTL
         );
 
@@ -138,12 +147,14 @@ contract GhostBrokerTest is Test {
         vm.prank(bob);
         uint256 agentB = brokerAgent.mint(20, BrokerAgent.Strategy.CONSERVATIVE, 1_000 ether);
 
+        bytes32 commodity = ghostMarket.GHOST_ORE();
+
         // Post matching bid + ask
-        ghostMarket.postOrder(agentA, GhostMarket.GHOST_ORE, GhostMarket.OrderSide.BID, 2 ether, 5 ether, 50);
-        ghostMarket.postOrder(agentB, GhostMarket.GHOST_ORE, GhostMarket.OrderSide.ASK, 2 ether, 5 ether, 50);
+        ghostMarket.postOrder(agentA, commodity, GhostMarket.OrderSide.BID, 2 ether, 5 ether, 50);
+        ghostMarket.postOrder(agentB, commodity, GhostMarket.OrderSide.ASK, 2 ether, 5 ether, 50);
 
         bytes32[] memory commodities = new bytes32[](1);
-        commodities[0] = GhostMarket.GHOST_ORE;
+        commodities[0] = commodity;
 
         uint256 matched = matchEngine.processBatch(commodities, 10);
         assertEq(matched, 1);
