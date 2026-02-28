@@ -9,8 +9,6 @@ const navLinks = [
   { path: '/',            label: 'HOME' },
   { path: '/arena',       label: 'ARENA' },
   { path: '/mint',        label: 'MINT' },
-  { path: '/market',      label: 'MARKET' },
-  { path: '/stake',       label: 'STAKE' },
   { path: '/leaderboard', label: 'RANKS' },
   { path: '/portfolio',   label: 'PORTFOLIO' },
 ];

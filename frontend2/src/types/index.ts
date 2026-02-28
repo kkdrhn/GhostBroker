@@ -4,7 +4,7 @@ export type AgentStrategy = 'AGGRESSIVE' | 'BALANCED' | 'CONSERVATIVE';
 // UI alias (lowercase) used only in RiskDNASlider
 export type Strategy = 'aggressive' | 'balanced' | 'conservative';
 export type TradeAction = 'BID' | 'ASK' | 'HOLD' | 'PARTNER';
-export type Commodity = 'ETH' | 'SOL' | 'MATIC' | 'BNB';
+export type Commodity = 'ETH' | 'SOL' | 'MATIC' | 'BNB' | 'MON';
 export type OrderSide = 'BID' | 'ASK';
 export type OrderStatus = 'OPEN' | 'MATCHED' | 'EXPIRED' | 'CANCELLED';
 export type CovenantStatus = 'PROPOSED' | 'ACTIVE' | 'DISSOLVED';
@@ -59,16 +59,18 @@ export interface OrderResponse {
 }
 
 export interface AgentDecisionResponse {
-  tx_hash: string;
-  agent_id: string;
-  action: TradeAction;
-  commodity: Commodity;
-  price: string;
-  qty: string;
-  reasoning: string;
+  tx_hash:    string;
+  agent_id:   number | string;
+  name?:      string;
+  strategy?:  string;
+  action:     TradeAction | 'HOLD' | 'PARTNER';
+  commodity:  Commodity;
+  price:      number | string;
+  qty:        number | string;
+  reasoning:  string;
   confidence: number;
   block_number: number;
-  timestamp: number;
+  timestamp:  number;
 }
 
 export interface ReputationResponse {

@@ -147,13 +147,20 @@ async def delete_agent(agent_id: int):
 
 
 @router.get("/{agent_id}/decisions", response_model=list[AgentDecisionResponse])
-async def agent_decisions(agent_id: int, limit: int = Query(20, le=100)):
-    """Bu ajanın son AI kararlarını getir."""
+async def agent_decisions(
+    agent_id: int,
+    limit: int = Query(20, ge=1, le=200),
+    page: int  = Query(1, ge=1),
+):
+    """Bu ajanın AI kararlarını getir — sayfalama destekli (page, limit)."""
     decision_file = Path(f"data/decisions/{agent_id}.json")
     if not decision_file.exists():
         return []
-    decisions = json.loads(decision_file.read_text())
-    return decisions[-limit:]
+    all_decisions: list = json.loads(decision_file.read_text())
+    # En yeni önce
+    all_decisions = list(reversed(all_decisions))
+    start = (page - 1) * limit
+    return all_decisions[start : start + limit]
 
 
 @router.get("/{agent_id}/lifecycle")

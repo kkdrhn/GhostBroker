@@ -1,6 +1,8 @@
 """Market router — /v1/market"""
 from __future__ import annotations
 
+import json
+from pathlib import Path
 from fastapi import APIRouter, Query
 from api.models.schemas import (
     OrderResponse, TradeResponse, CandleResponse,
@@ -9,7 +11,19 @@ from api.models.schemas import (
 
 router = APIRouter()
 
-COMMODITIES = ["GHOST_ORE", "PHANTOM_GAS", "VOID_CHIP", "MON_USDC"]
+COMMODITIES = ["ETH", "SOL", "MATIC", "BNB", "MON"]
+
+_TRADES_PATH   = Path("data/trades.json")
+_DEC_ALL_PATH  = Path("data/decisions_all.json")
+
+
+def _load_json(p: Path) -> list:
+    if not p.exists():
+        return []
+    try:
+        return json.loads(p.read_text())
+    except Exception:
+        return []
 
 
 @router.get("/commodities")
@@ -59,15 +73,77 @@ async def get_order(order_id: str):
     raise HTTPException(status_code=404, detail="Order not found")
 
 
-@router.get("/trades", response_model=list[TradeResponse])
-async def global_trades(limit: int = Query(50, le=200), offset: int = Query(0)):
-    """Global trade feed from MatchEngine history."""
-    return []
+@router.get("/trades")
+async def global_trades(
+    limit:     int = Query(50, ge=1, le=200),
+    page:      int = Query(1, ge=1),
+    commodity: str = Query(None),
+    agent_id:  str = Query(None),
+):
+    """Global AI trade feed — sayfalama: page + limit. Filtre: commodity, agent_id."""
+    all_trades = list(reversed(_load_json(_TRADES_PATH)))
+    if commodity:
+        all_trades = [t for t in all_trades if t.get("commodity") == commodity]
+    if agent_id:
+        all_trades = [t for t in all_trades if str(t.get("agent_id")) == agent_id]
+    total = len(all_trades)
+    start = (page - 1) * limit
+    items = all_trades[start : start + limit]
+    return {
+        "total":      total,
+        "page":       page,
+        "page_size":  limit,
+        "total_pages": max(1, (total + limit - 1) // limit),
+        "items":      items,
+    }
 
 
-@router.get("/trades/{commodity}", response_model=list[TradeResponse])
-async def commodity_trades(commodity: str, limit: int = Query(50, le=200)):
-    return []
+@router.get("/decisions")
+async def global_decisions(
+    limit:     int = Query(50, ge=1, le=200),
+    page:      int = Query(1, ge=1),
+    commodity: str = Query(None),
+    agent_id:  str = Query(None),
+    action:    str = Query(None),
+):
+    """Global AI decision log — sayfalama: page + limit. Filtre: commodity, agent_id, action."""
+    all_dec = list(reversed(_load_json(_DEC_ALL_PATH)))
+    if commodity:
+        all_dec = [d for d in all_dec if d.get("commodity") == commodity]
+    if agent_id:
+        all_dec = [d for d in all_dec if str(d.get("agent_id")) == agent_id]
+    if action:
+        all_dec = [d for d in all_dec if d.get("action") == action.upper()]
+    total = len(all_dec)
+    start = (page - 1) * limit
+    items = all_dec[start : start + limit]
+    return {
+        "total":       total,
+        "page":        page,
+        "page_size":   limit,
+        "total_pages": max(1, (total + limit - 1) // limit),
+        "items":       items,
+    }
+
+
+@router.get("/trades/{commodity}")
+async def commodity_trades(
+    commodity: str,
+    limit:     int = Query(50, ge=1, le=200),
+    page:      int = Query(1, ge=1),
+):
+    """Belirli bir commodity için trade geçmişi — sayfalama destekli."""
+    all_trades = list(reversed(_load_json(_TRADES_PATH)))
+    filtered   = [t for t in all_trades if t.get("commodity") == commodity]
+    total      = len(filtered)
+    start      = (page - 1) * limit
+    return {
+        "total":       total,
+        "page":        page,
+        "page_size":   limit,
+        "total_pages": max(1, (total + limit - 1) // limit),
+        "items":       filtered[start : start + limit],
+    }
 
 
 @router.get("/candles/{commodity}", response_model=list[CandleResponse])

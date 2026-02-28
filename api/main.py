@@ -50,7 +50,7 @@ app.include_router(oracle.router,       prefix="/v1/oracle",       tags=["Oracle
 app.include_router(websocket_router)
 
 STORE_PATH = Path(os.getenv("AGENT_STORE_PATH", "data/agents.json"))
-COMMODITIES = ["ETH", "SOL", "MATIC", "BNB"]
+COMMODITIES = ["ETH", "SOL", "MATIC", "BNB", "MON"]
 
 # sys.path'e proje kökünü ekle (agents.* import için)
 _root = Path(__file__).parent.parent
@@ -129,7 +129,7 @@ async def _agent_ticker() -> None:
 
                 # Her tick'te strateji + risk'e göre commodity seç
                 if strategy_str == "AGGRESSIVE":
-                    commodity = COMMODITIES[0]               # ETH — en volatil
+                    commodity = COMMODITIES[4]               # MON — Monad
                 elif strategy_str == "CONSERVATIVE":
                     commodity = COMMODITIES[tick % 3]        # ETH/SOL/MATIC rotasyon
                 else:
@@ -255,17 +255,11 @@ async def _agent_ticker() -> None:
                     agent["loss_count"] = agent.get("loss_count", 0) + 1
 
                 # ── Karar geçmişini diske kaydet ──
-                dec_path = Path(f"data/decisions/{token_id}.json")
-                dec_path.parent.mkdir(parents=True, exist_ok=True)
-                history: list = []
-                if dec_path.exists():
-                    try:
-                        history = json.loads(dec_path.read_text())
-                    except Exception:
-                        history = []
-                history.append({
+                dec_entry = {
                     "tx_hash":      f"0xai{int(time.time()):x}{token_id}",
                     "agent_id":     str(token_id),
+                    "agent_name":   name,
+                    "strategy":     strategy_str,
                     "action":       action,
                     "commodity":    commodity,
                     "price":        str(dec_price),
@@ -274,10 +268,58 @@ async def _agent_ticker() -> None:
                     "confidence":   confidence,
                     "block_number": int(time.time()),
                     "timestamp":    int(time.time()),
-                })
-                if len(history) > 500:
-                    history = history[-500:]
+                }
+
+                # Agent'a özel decisions dosyası
+                dec_path = Path(f"data/decisions/{token_id}.json")
+                dec_path.parent.mkdir(parents=True, exist_ok=True)
+                history: list = []
+                if dec_path.exists():
+                    try:
+                        history = json.loads(dec_path.read_text())
+                    except Exception:
+                        history = []
+                history.append(dec_entry)
+                if len(history) > 1000:
+                    history = history[-1000:]
                 dec_path.write_text(json.dumps(history, indent=2))
+
+                # Global decisions log (tüm agentlar)
+                global_dec_path = Path("data/decisions_all.json")
+                global_dec: list = []
+                if global_dec_path.exists():
+                    try:
+                        global_dec = json.loads(global_dec_path.read_text())
+                    except Exception:
+                        global_dec = []
+                global_dec.append(dec_entry)
+                if len(global_dec) > 2000:
+                    global_dec = global_dec[-2000:]
+                global_dec_path.write_text(json.dumps(global_dec, indent=2))
+
+                # Global trades log
+                if action in ("BID", "ASK"):
+                    trade_entry = {
+                        "commodity":  commodity,
+                        "price":      str(dec_price),
+                        "qty":        str(qty),
+                        "agent_id":   str(token_id),
+                        "agent_name": name,
+                        "strategy":   strategy_str,
+                        "side":       action,
+                        "timestamp":  int(time.time()),
+                    }
+                    trades_path = Path("data/trades.json")
+                    trades_log: list = []
+                    if trades_path.exists():
+                        try:
+                            trades_log = json.loads(trades_path.read_text())
+                        except Exception:
+                            trades_log = []
+                    trades_log.append(trade_entry)
+                    if len(trades_log) > 2000:
+                        trades_log = trades_log[-2000:]
+                    trades_path.write_text(json.dumps(trades_log, indent=2))
 
             # Güncellenmiş agentleri kaydet
             STORE_PATH.write_text(json.dumps(raw_agents, indent=2))
