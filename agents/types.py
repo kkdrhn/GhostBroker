@@ -26,9 +26,10 @@ class AgentDNA:
     token_id:        int
     risk_appetite:   int           # 0-100
     strategy:        Strategy
-    capital:         float         # current capital in GHOST
+    capital:         float         # current capital in USD
     initial_capital: float
     owner_address:   str
+    name:            str = ""      # agent display name
 
 
 @dataclass

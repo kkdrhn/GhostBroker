@@ -87,6 +87,7 @@ async def _price_ticker() -> None:
 # ── Background: Agent ticki (Gerçek Gemini AI) ────────────────────────────────
 async def _agent_ticker() -> None:
     """Her 20 saniyede her agent için gerçek Gemini AI kararı üret."""
+    import random
     from api.routers.oracle import get_price
     from agents.types import AgentDNA, MarketState, Strategy
     from agents.brain.aggressive_agent   import AggressiveAgent
@@ -95,36 +96,6 @@ async def _agent_ticker() -> None:
 
     await asyncio.sleep(5)  # backend tam açılsın
 
-    _brains: dict[int, AggressiveAgent | BalancedAgent | ConservativeAgent] = {}
-
-    def _get_brain(agent_dict: dict):
-        token_id = agent_dict["token_id"]
-        strategy_str = agent_dict.get("strategy", "BALANCED").upper()
-        if token_id in _brains:
-            return _brains[token_id]
-        try:
-            capital_wei = int(agent_dict.get("capital", "100000000000000000000"))
-        except Exception:
-            capital_wei = 100 * 10**18
-        dna = AgentDNA(
-            agent_id        = str(token_id),
-            token_id        = token_id,
-            risk_appetite   = int(agent_dict.get("risk_appetite", 50)),
-            strategy        = Strategy(strategy_str.lower()),
-            capital         = capital_wei / 1e18,
-            initial_capital = int(agent_dict.get("initial_capital", capital_wei)) / 1e18,
-            owner_address   = agent_dict.get("owner_address", "0x0"),
-        )
-        if strategy_str == "AGGRESSIVE":
-            brain = AggressiveAgent(dna)
-        elif strategy_str == "CONSERVATIVE":
-            brain = ConservativeAgent(dna)
-        else:
-            brain = BalancedAgent(dna)
-        _brains[token_id] = brain
-        return brain
-
-    import random
     tick = 0
     while True:
         tick += 1
@@ -135,82 +106,113 @@ async def _agent_ticker() -> None:
 
             raw_agents: list[dict] = json.loads(STORE_PATH.read_text())
             if not raw_agents:
+                logger.info("⏳ Henüz kayıtlı agent yok, bekleniyor...")
                 await asyncio.sleep(20)
                 continue
 
+            logger.info("━━━ Tick #%d — %d agent işleniyor ━━━", tick, len(raw_agents))
+
             for agent in raw_agents:
-                # Her agent kendi stratejisine göre commodity seçer
+                token_id     = agent["token_id"]
                 strategy_str = agent.get("strategy", "BALANCED").upper()
+                name         = agent.get("name", f"Agent #{token_id}")
+                risk         = int(agent.get("risk_appetite", 50))
+
+                # Güncel capital hesapla
+                try:
+                    capital_wei     = int(agent.get("capital", "1000000000000000000"))
+                    capital_usd     = capital_wei / 1e18
+                    init_capital    = int(agent.get("initial_capital", capital_wei)) / 1e18
+                except Exception:
+                    capital_usd  = 1.0
+                    init_capital = 1.0
+
+                # Her tick'te strateji + risk'e göre commodity seç
                 if strategy_str == "AGGRESSIVE":
-                    commodity = COMMODITIES[0]          # ETH — en volatil
+                    commodity = COMMODITIES[0]               # ETH — en volatil
                 elif strategy_str == "CONSERVATIVE":
-                    commodity = COMMODITIES[tick % 3]   # ETH/SOL/MATIC rotasyon
+                    commodity = COMMODITIES[tick % 3]        # ETH/SOL/MATIC rotasyon
                 else:
                     commodity = COMMODITIES[tick % len(COMMODITIES)]
 
                 price, conf = get_price(commodity)
-                spread = price * 0.003
+                spread_abs  = price * 0.003
+                price_change = round(random.uniform(-3.5, 4.0), 2)
 
-                # MarketState oluştur
                 market_state = MarketState(
                     commodity           = commodity,
-                    best_bid            = round(price - spread, 4),
-                    best_ask            = round(price + spread, 4),
+                    best_bid            = round(price - spread_abs, 4),
+                    best_ask            = round(price + spread_abs, 4),
                     mid_price           = price,
-                    spread              = round(spread / price * 100, 4),
+                    spread              = round(spread_abs / price * 100, 4),
                     volume_24h          = price * 50000,
-                    price_change        = round(random.uniform(-2.5, 3.5), 2),
-                    orderbook_depth_bid = random.randint(5, 15),
-                    orderbook_depth_ask = random.randint(5, 15),
+                    price_change        = price_change,
+                    orderbook_depth_bid = random.randint(5, 20),
+                    orderbook_depth_ask = random.randint(5, 20),
                     oracle_price        = price,
                     oracle_confidence   = conf,
                 )
 
+                # Her tick'te güncel DNA ile brain oluştur (cache yok — her zaman taze)
+                dna = AgentDNA(
+                    agent_id        = str(token_id),
+                    token_id        = token_id,
+                    risk_appetite   = risk,
+                    strategy        = Strategy(strategy_str.lower()),
+                    capital         = capital_usd,
+                    initial_capital = init_capital,
+                    owner_address   = agent.get("owner_address", "0x0"),
+                    name            = name,
+                )
+                if strategy_str == "AGGRESSIVE":
+                    brain = AggressiveAgent(dna)
+                elif strategy_str == "CONSERVATIVE":
+                    brain = ConservativeAgent(dna)
+                else:
+                    brain = BalancedAgent(dna)
+
+                logger.info(
+                    "🔍 [%s | #%d] %s | kapital=%.2f USD | risk=%d/100 | commodity=%s @ %.4f | Δ=%.2f%%",
+                    strategy_str, token_id, name, capital_usd, risk, commodity, price, price_change
+                )
+
                 try:
                     # ── GERÇEK GEMİNİ AI ÇAĞRISI ──
-                    brain = _get_brain(agent)
-                    # Brain'in DNA'sını güncel capital ile yenile
-                    try:
-                        brain.dna.capital = int(agent.get("capital", "100000000000000000000")) / 1e18
-                    except Exception:
-                        pass
-
-                    # asyncio.to_thread ile senkron LLM çağrısını thread'e taşı
                     ai_decision = await asyncio.to_thread(brain.decide, market_state)
 
-                    action    = ai_decision.action.value
-                    dec_price = ai_decision.price
-                    qty       = ai_decision.qty
-                    reasoning = ai_decision.reasoning
-                    confidence= ai_decision.confidence
+                    action     = ai_decision.action.value
+                    dec_price  = ai_decision.price
+                    qty        = ai_decision.qty
+                    reasoning  = ai_decision.reasoning
+                    confidence = ai_decision.confidence
 
                     logger.info(
-                        "🤖 Agent #%s [%s] → %s @ %.4f x %.4f | conf=%.2f | %s",
-                        agent["token_id"], strategy_str,
-                        action, dec_price, qty, confidence, reasoning[:80]
+                        "🤖 [%s | #%d] %s → %s @ %.4f x %.6f | conf=%.2f\n    💬 %s",
+                        strategy_str, token_id, name,
+                        action, dec_price, qty, confidence, reasoning
                     )
 
                 except Exception as ai_exc:
-                    logger.warning("Gemini hatası agent #%s: %s — fallback kullanılıyor", agent["token_id"], ai_exc)
-                    # Gemini başarısız olursa basit kural tabanlı fallback
-                    price_change = market_state.price_change
-                    if price_change > 1.5:
+                    logger.warning(
+                        "⚠️  Gemini hatası [#%d %s]: %s — kural tabanlı fallback",
+                        token_id, name, ai_exc
+                    )
+                    # Gemini başarısız olursa kural tabanlı fallback
+                    if market_state.price_change > 1.5:
                         action = "BID"
-                    elif price_change < -1.5:
+                    elif market_state.price_change < -1.5:
                         action = "ASK"
                     else:
                         action = "HOLD"
                     dec_price  = market_state.best_bid if action == "BID" else market_state.best_ask
-                    risk       = agent.get("risk_appetite", 50) / 100
-                    cap_float  = int(agent.get("capital", "100000000000000000000")) / 1e18
-                    qty        = round(cap_float * risk * 0.10, 6)
-                    reasoning  = f"[Fallback] {commodity} @ {price:.2f} — price_change={price_change:.2f}%"
+                    qty        = round(capital_usd * (risk / 100) * 0.10, 6)
+                    reasoning  = f"[Fallback] {commodity} @ {price:.4f} — Δ={market_state.price_change:.2f}%"
                     confidence = 0.50
 
                 # ── Karar WS'e yayınla ──
                 decision_payload = {
-                    "agent_id":   agent["token_id"],
-                    "name":       agent.get("name", f"Agent #{agent['token_id']}"),
+                    "agent_id":   token_id,
+                    "name":       name,
                     "strategy":   strategy_str,
                     "action":     action,
                     "commodity":  commodity,
@@ -233,8 +235,8 @@ async def _agent_ticker() -> None:
                             "commodity":  commodity,
                             "price":      dec_price,
                             "qty":        qty,
-                            "agent_id":   agent["token_id"],
-                            "agent_name": agent.get("name", f"Agent #{agent['token_id']}"),
+                            "agent_id":   token_id,
+                            "agent_name": name,
                             "side":       action,
                             "timestamp":  int(time.time()),
                         },
@@ -242,21 +244,18 @@ async def _agent_ticker() -> None:
 
                 # ── Capital & stats güncelle ──
                 pnl = qty * price * (0.008 if action == "BID" else -0.004 if action == "ASK" else 0)
-                try:
-                    old_capital = int(agent.get("capital", "100000000000000000000")) / 1e18
-                except Exception:
-                    old_capital = 100.0
-                new_capital = max(0.0, old_capital + pnl)
-                agent["capital"]      = str(int(new_capital * 1e18))
-                agent["last_tick_at"] = int(time.time())
-                agent["last_action"]  = action
+                new_capital = max(0.0, capital_usd + pnl)
+                agent["capital"]           = str(int(new_capital * 1e18))
+                agent["last_tick_at"]      = int(time.time())
+                agent["last_action"]       = action
+                agent["preferred_commodity"] = commodity
                 if pnl > 0:
                     agent["win_count"]  = agent.get("win_count", 0) + 1
                 elif pnl < 0:
                     agent["loss_count"] = agent.get("loss_count", 0) + 1
 
                 # ── Karar geçmişini diske kaydet ──
-                dec_path = Path(f"data/decisions/{agent['token_id']}.json")
+                dec_path = Path(f"data/decisions/{token_id}.json")
                 dec_path.parent.mkdir(parents=True, exist_ok=True)
                 history: list = []
                 if dec_path.exists():
@@ -265,8 +264,8 @@ async def _agent_ticker() -> None:
                     except Exception:
                         history = []
                 history.append({
-                    "tx_hash":      f"0xai{int(time.time()):x}{agent['token_id']}",
-                    "agent_id":     str(agent["token_id"]),
+                    "tx_hash":      f"0xai{int(time.time()):x}{token_id}",
+                    "agent_id":     str(token_id),
                     "action":       action,
                     "commodity":    commodity,
                     "price":        str(dec_price),
@@ -284,7 +283,7 @@ async def _agent_ticker() -> None:
             STORE_PATH.write_text(json.dumps(raw_agents, indent=2))
 
         except Exception as exc:
-            logger.error("Agent ticker kritik hata: %s", exc, exc_info=True)
+            logger.error("🔴 Agent ticker kritik hata: %s", exc, exc_info=True)
 
         await asyncio.sleep(20)  # Gemini rate limit için 20 sn bekle
 

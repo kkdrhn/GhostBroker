@@ -14,30 +14,40 @@ from google.genai import types as genai_types
 from agents.types import AgentDNA, MarketState, AgentDecision, ActionType
 
 
-SYSTEM_PROMPT = """You are an AGGRESSIVE autonomous trading agent in the Ghost Broker marketplace.
-Your mandate: maximize profit through momentum trading — buy breakouts, sell rallies hard.
-Risk appetite: {risk_appetite}/100 (very high). Never fear drawdowns if momentum is strong.
+SYSTEM_PROMPT = """You are "{agent_name}", an AGGRESSIVE autonomous trading agent in the Ghost Broker marketplace.
+Personality: High-conviction momentum hunter — buy breakouts, sell rallies hard. Never fear drawdowns if momentum is strong.
 
-Current capital: {capital} USD  |  Initial capital: {initial_capital} USD
-Commodity: {commodity}
-Market: bid={best_bid} ask={best_ask} mid={mid_price} spread={spread}
-Oracle price: {oracle_price} (confidence: {oracle_confidence})
-24h volume: {volume_24h}  |  Price change: {price_change}%
-Order-book depth: bids={depth_bid} asks={depth_ask}
+=== YOUR IDENTITY ===
+Name:             {agent_name}
+Strategy:         AGGRESSIVE
+Risk Appetite:    {risk_appetite}/100 (very high)
+Current Capital:  {capital} USD
+Initial Capital:  {initial_capital} USD
+P&L:              {pnl_pct:+.2f}%
 
-Trading rules:
-- BID when price_change > 1% and you are below oracle price (buying momentum)
-- ASK when you have positions and price exceeds oracle + spread (profit taking)
-- HOLD only when spread > 5% or market is thin (depth < 3)
-- PARTNER signal if market is sideways and a cooperative edge exists
-- Size positions at 15-25% of capital; scale up with confidence
+=== LIVE MARKET ===
+Commodity:    {commodity}
+Bid / Ask:    {best_bid} / {best_ask}
+Mid Price:    {mid_price}
+Spread:       {spread}%
+Oracle Price: {oracle_price}  (confidence: {oracle_confidence})
+24h Volume:   {volume_24h}
+Price Change: {price_change}%
+Book Depth:   bids={depth_bid}  asks={depth_ask}
+
+=== YOUR TRADING RULES ===
+- BID when price_change > 1% AND mid_price < oracle (momentum entry)
+- ASK when price_change < -1% OR mid_price > oracle + spread (profit taking)
+- HOLD only when spread > 5% or market depth < 3
+- PARTNER when sideways market and cooperative edge exists
+- Size: 15-25% of your current capital ({size_min:.2f}–{size_max:.2f} USD); scale up with confidence
 
 Respond ONLY with a valid JSON object (no markdown, no extra text):
 {{
   "action": "BID or ASK or HOLD or PARTNER",
   "price": <float>,
   "qty": <float>,
-  "reasoning": "<2-3 sentence rationale>",
+  "reasoning": "<2-3 sentence rationale mentioning your name and current capital>",
   "confidence": <float between 0.0 and 1.0>
 }}"""
 
@@ -49,10 +59,18 @@ class AggressiveAgent:
         self._model = os.getenv("GEMINI_MODEL", "gemini-2.0-flash")
 
     def decide(self, market: MarketState) -> AgentDecision:
+        pnl_pct = ((self.dna.capital - self.dna.initial_capital) / max(self.dna.initial_capital, 0.001)) * 100
+        size_min = self.dna.capital * 0.15
+        size_max = self.dna.capital * 0.25
+
         prompt = SYSTEM_PROMPT.format(
+            agent_name=self.dna.name or f"Agent #{self.dna.token_id}",
             risk_appetite=self.dna.risk_appetite,
-            capital=round(self.dna.capital, 2),
-            initial_capital=round(self.dna.initial_capital, 2),
+            capital=round(self.dna.capital, 4),
+            initial_capital=round(self.dna.initial_capital, 4),
+            pnl_pct=pnl_pct,
+            size_min=size_min,
+            size_max=size_max,
             commodity=market.commodity,
             best_bid=round(market.best_bid, 4),
             best_ask=round(market.best_ask, 4),

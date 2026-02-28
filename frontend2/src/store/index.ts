@@ -45,8 +45,9 @@ interface GhostStore {
   // ── Leaderboard ────────────────────────────────────────────────────────────
   leaderboard: LeaderboardEntry[];
 
-  // ── Oracle prices ──────────────────────────────────────────────────────────
+  // ── Oracle prices (price + rolling history) ───────────────────────────────
   prices: Partial<Record<Commodity, OracleFeedResponse>>;
+  priceHistory: Partial<Record<Commodity, number[]>>;
 
   // ── Agent decisions feed ───────────────────────────────────────────────────
   decisions: AgentDecisionResponse[];
@@ -83,6 +84,7 @@ export const useGhostStore = create<GhostStore>((set, get) => ({
   orderBooks: {},
   leaderboard: [],
   prices: {},
+  priceHistory: {},
   decisions: [],
   engineStatus: null,
   totalBurned: '0',
@@ -119,9 +121,16 @@ export const useGhostStore = create<GhostStore>((set, get) => ({
 
       case 'price': {
         const feed = event.data;
-        set((s) => ({
-          prices: { ...s.prices, [feed.commodity]: feed },
-        }));
+        const c = feed.commodity as Commodity;
+        const newPrice = Number(feed.price);
+        set((s) => {
+          const prev = s.priceHistory[c] ?? [];
+          const history = [...prev, newPrice].slice(-40); // son 40 nokta
+          return {
+            prices: { ...s.prices, [c]: feed },
+            priceHistory: { ...s.priceHistory, [c]: history },
+          };
+        });
         break;
       }
 
