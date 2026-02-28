@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect } from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import { cn } from '@/lib/utils';
 import { useGhostStore } from '@/store';
@@ -19,12 +19,38 @@ const TopBar: React.FC = () => {
   const location = useLocation();
   const { isConnected, walletAddress, ghostBalance, setWallet, disconnect } = useGhostStore();
 
-  // Minimal stub — real impl uses wagmi useConnect/useDisconnect
-  const handleConnect = () => {
-    // TODO: replace with wagmi connect modal
-    const mockAddr = '0x7a3b...4f2e';
-    setWallet(mockAddr, '12450500000000000000000');
+  // Sayfa açıldığında MetaMask'ta zaten bağlı hesap varsa otomatik yükle
+  useEffect(() => {
+    if (typeof window.ethereum === 'undefined') return;
+    window.ethereum.request({ method: 'eth_accounts' }).then((accounts) => {
+      const list = accounts as string[];
+      if (list.length > 0) setWallet(list[0], '0');
+    });
+    const handler = (...args: unknown[]) => {
+      const accs = args[0] as string[];
+      if (accs.length > 0) setWallet(accs[0], '0');
+      else disconnect();
+    };
+    window.ethereum.on('accountsChanged', handler);
+    return () => window.ethereum?.removeListener('accountsChanged', handler);
+  }, [setWallet, disconnect]);
+
+  const handleConnect = async () => {
+    if (typeof window.ethereum === 'undefined') {
+      alert('MetaMask bulunamadı. Lütfen MetaMask yükleyin.');
+      return;
+    }
+    try {
+      const accounts = await window.ethereum.request({ method: 'eth_requestAccounts' }) as string[];
+      if (accounts[0]) setWallet(accounts[0], '0');
+    } catch {
+      // kullanıcı reddetti
+    }
   };
+
+  const shortAddr = walletAddress
+    ? `${walletAddress.slice(0, 6)}…${walletAddress.slice(-4)}`
+    : '';
 
   return (
     <header className="sticky top-0 z-50 border-b border-border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -55,26 +81,28 @@ const TopBar: React.FC = () => {
 
         {/* Right side */}
         <div className="flex items-center gap-4">
-          {/* Live block counter — fed from WS chain.block events */}
           <BlockCounter />
 
           {isConnected ? (
             <div className="flex items-center gap-3">
-              <span className="text-xs text-ghost-gold font-bold">
-                {(Number(BigInt(ghostBalance) / BigInt('1000000000000000000'))).toLocaleString()} GHOST
-              </span>
+              {ghostBalance !== '0' && (
+                <span className="text-xs text-yellow-400 font-bold">
+                  {(Number(BigInt(ghostBalance)) / 1e18).toLocaleString(undefined, { maximumFractionDigits: 2 })} GHOST
+                </span>
+              )}
               <Button
                 variant="outline"
                 size="sm"
                 onClick={disconnect}
-                className="text-[10px] h-7 border-border"
+                className="text-[10px] h-7 border-border font-mono"
+                title="Bağlantıyı kes"
               >
-                {walletAddress}
+                {shortAddr}
               </Button>
             </div>
           ) : (
             <Button size="sm" onClick={handleConnect} className="text-[10px] h-7">
-              Connect Wallet
+              Cüzdan Bağla
             </Button>
           )}
         </div>

@@ -29,18 +29,22 @@ class AgentStrategy(str, Enum):
 
 
 class AgentResponse(BaseModel):
-    token_id:        int
-    owner_address:   str
-    risk_appetite:   int
-    strategy:        AgentStrategy
-    initial_capital: str   # wei string
-    capital:         str   # wei string
-    state:           AgentState
-    win_count:       int
-    loss_count:      int
-    created_at:      int
-    last_tick_at:    int
-    score:           Optional[int] = None  # 0-10000 from ReputationEngine
+    token_id:           int
+    owner_address:      str
+    name:               Optional[str] = None
+    risk_appetite:      int
+    strategy:           AgentStrategy
+    initial_capital:    str   # wei string
+    capital:            str   # wei string
+    state:              AgentState
+    win_count:          int
+    loss_count:         int
+    created_at:         int
+    last_tick_at:       int
+    score:              Optional[int] = None
+    reputation_score:   Optional[int] = None
+    last_action:        Optional[str] = None
+    preferred_commodity: Optional[str] = None
 
 
 class AgentDecisionResponse(BaseModel):
