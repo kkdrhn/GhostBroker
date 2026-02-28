@@ -13,8 +13,9 @@ router = APIRouter()
 
 COMMODITIES = ["ETH", "SOL", "MATIC", "BNB", "MON"]
 
-_TRADES_PATH   = Path("data/trades.json")
-_DEC_ALL_PATH  = Path("data/decisions_all.json")
+_BASE_DIR      = Path(__file__).parent.parent.parent   # /Users/x/Desktop/monad
+_TRADES_PATH   = _BASE_DIR / "data" / "trades.json"
+_DEC_ALL_PATH  = _BASE_DIR / "data" / "decisions_all.json"
 
 
 def _load_json(p: Path) -> list:

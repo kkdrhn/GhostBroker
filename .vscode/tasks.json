@@ -1,0 +1,19 @@
+{
+	"version": "2.0.0",
+	"tasks": [
+		{
+			"label": "Frontend Dev Server",
+			"type": "shell",
+			"command": "cd /Users/x/Desktop/monad/frontend2 && node_modules/.bin/vite --port 8081",
+			"isBackground": true,
+			"problemMatcher": []
+		},
+		{
+			"label": "Backend API Server",
+			"type": "shell",
+			"command": "cd /Users/x/Desktop/monad && .venv/bin/uvicorn api.main:app --port 8000",
+			"isBackground": true,
+			"problemMatcher": []
+		}
+	]
+}

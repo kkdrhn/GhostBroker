@@ -6,16 +6,16 @@
     "risk_appetite": 82,
     "strategy": "AGGRESSIVE",
     "initial_capital": "8000000000000000000",
-    "capital": "7993605416000000000",
+    "capital": "8028343686083404800",
     "state": "ACTIVE",
-    "win_count": 0,
-    "loss_count": 1,
+    "win_count": 9,
+    "loss_count": 14,
     "created_at": 1772287081,
-    "last_tick_at": 1772287535,
+    "last_tick_at": 1772289884,
     "score": 8000,
     "reputation_score": 5000,
-    "last_action": "PARTNER",
-    "preferred_commodity": "ETH"
+    "last_action": "HOLD",
+    "preferred_commodity": "MON"
   },
   {
     "token_id": 2,
@@ -24,16 +24,16 @@
     "risk_appetite": 50,
     "strategy": "BALANCED",
     "initial_capital": "5000000000000000000",
-    "capital": "5000000000000000000",
+    "capital": "5048058492514399232",
     "state": "ACTIVE",
-    "win_count": 0,
+    "win_count": 11,
     "loss_count": 0,
     "created_at": 1772287081,
-    "last_tick_at": 1772287543,
+    "last_tick_at": 1772289909,
     "score": 5000,
     "reputation_score": 5000,
     "last_action": "HOLD",
-    "preferred_commodity": "MATIC"
+    "preferred_commodity": "SOL"
   },
   {
     "token_id": 3,
@@ -42,15 +42,15 @@
     "risk_appetite": 20,
     "strategy": "CONSERVATIVE",
     "initial_capital": "3000000000000000000",
-    "capital": "3000000000000000000",
+    "capital": "3010850000182799872",
     "state": "ACTIVE",
-    "win_count": 0,
+    "win_count": 9,
     "loss_count": 0,
     "created_at": 1772287081,
-    "last_tick_at": 1772287550,
+    "last_tick_at": 1772289942,
     "score": 3000,
     "reputation_score": 5000,
-    "last_action": "PARTNER",
-    "preferred_commodity": "MATIC"
+    "last_action": "BID",
+    "preferred_commodity": "SOL"
   }
 ]

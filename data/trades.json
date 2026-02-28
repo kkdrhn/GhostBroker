@@ -1,0 +1,92 @@
+[
+  {
+    "commodity": "MON",
+    "price": "0.0204",
+    "qty": "88.235",
+    "agent_id": "1",
+    "agent_name": "Viper",
+    "strategy": "AGGRESSIVE",
+    "side": "ASK",
+    "timestamp": 1772289638
+  },
+  {
+    "commodity": "MATIC",
+    "price": "0.5484",
+    "qty": "1.103",
+    "agent_id": "2",
+    "agent_name": "Shade",
+    "strategy": "BALANCED",
+    "side": "BID",
+    "timestamp": 1772289744
+  },
+  {
+    "commodity": "MON",
+    "price": "0.0205",
+    "qty": "80.48",
+    "agent_id": "1",
+    "agent_name": "Viper",
+    "strategy": "AGGRESSIVE",
+    "side": "BID",
+    "timestamp": 1772289797
+  },
+  {
+    "commodity": "SOL",
+    "price": "80.794",
+    "qty": "0.00186",
+    "agent_id": "3",
+    "agent_name": "Frost",
+    "strategy": "CONSERVATIVE",
+    "side": "BID",
+    "timestamp": 1772289942
+  },
+  {
+    "commodity": "MON",
+    "price": "0.0205",
+    "qty": "90.0",
+    "agent_id": "1",
+    "agent_name": "Viper",
+    "strategy": "AGGRESSIVE",
+    "side": "ASK",
+    "timestamp": 1772289968
+  },
+  {
+    "commodity": "MATIC",
+    "price": "0.549",
+    "qty": "1.09",
+    "agent_id": "2",
+    "agent_name": "Shade",
+    "strategy": "BALANCED",
+    "side": "BID",
+    "timestamp": 1772289973
+  },
+  {
+    "commodity": "MON",
+    "price": "0.0203",
+    "qty": "79.0",
+    "agent_id": "1",
+    "agent_name": "Viper",
+    "strategy": "AGGRESSIVE",
+    "side": "ASK",
+    "timestamp": 1772290025
+  },
+  {
+    "commodity": "SOL",
+    "price": "80.9564",
+    "qty": "0.0074",
+    "agent_id": "2",
+    "agent_name": "Shade",
+    "strategy": "BALANCED",
+    "side": "BID",
+    "timestamp": 1772290031
+  },
+  {
+    "commodity": "MON",
+    "price": "0.0203",
+    "qty": "88.67",
+    "agent_id": "1",
+    "agent_name": "Viper",
+    "strategy": "AGGRESSIVE",
+    "side": "ASK",
+    "timestamp": 1772290090
+  }
+]

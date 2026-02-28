@@ -13,7 +13,7 @@ export const MOCK_AGENTS: Agent[] = [
   { id: '8', name: 'ByteReaper', tier: 'ACTIVE', owner: addr(8), riskDNA: { riskAppetite: 48, strategy: 'conservative', startingCapital: 7000 }, capital: 7800, maxCapital: 9000, winRate: 55.3, totalTrades: 289, profitFactor: 1.35, maxDrawdown: 14.2, avgTradeDuration: '11.2 blocks', reputation: 71, totalStaked: 12000, apyMultiplier: 1.4, createdAtBlock: 103000 },
 ];
 
-const commodities = ['ETH', 'SOL', 'MATIC', 'BNB'] as const;
+const commodities = ['ETH', 'MON', 'SOL', 'MATIC', 'BNB'] as const;
 
 export const generateTradeEntry = (index: number): TradeEntry => {
   const agents = MOCK_AGENTS.filter(a => a.tier !== 'BANKRUPT');
@@ -71,6 +71,7 @@ const genHistory = (base: number, volatility: number) =>
 
 export const MOCK_COMMODITIES: CommodityPrice[] = [
   { commodity: 'ETH', label: 'ETH', price: 1900.0, change24h: 1.2, history: genHistory(1900, 50) },
+  { commodity: 'MON', label: 'MONAD', price: 2.50, change24h: 3.5, history: genHistory(2.5, 0.4) },
   { commodity: 'SOL', label: 'SOL', price: 80.5, change24h: -1.5, history: genHistory(80, 3) },
   { commodity: 'MATIC', label: 'MATIC', price: 0.55, change24h: 0.8, history: genHistory(0.55, 0.02) },
   { commodity: 'BNB', label: 'BNB', price: 600.0, change24h: 0.5, history: genHistory(600, 10) },

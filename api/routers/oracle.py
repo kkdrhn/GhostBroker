@@ -16,8 +16,8 @@ from api.models.schemas import OracleFeedResponse, AgentDecisionResponse
 router = APIRouter()
 logger = logging.getLogger(__name__)
 
-# Gerçek kripto varlıkları — GHOST_ORE/PHANTOM_GAS yerine
-ASSETS = ["ETH", "SOL", "MATIC", "BNB"]
+# Gerçek kripto varlıkları
+ASSETS = ["ETH", "SOL", "MATIC", "BNB", "MON"]
 
 # CoinGecko ID eşlemesi
 COINGECKO_IDS = {
@@ -25,6 +25,7 @@ COINGECKO_IDS = {
     "SOL":   "solana",
     "MATIC": "matic-network",
     "BNB":   "binancecoin",
+    "MON":   "monad", # Placeholder/Mock
 }
 
 # Varsayılan başlangıç fiyatları (CoinGecko erişilemezse)
@@ -33,6 +34,7 @@ _prices: dict[str, float] = {
     "SOL":   140.0,
     "MATIC": 0.55,
     "BNB":   580.0,
+    "MON":   2.50,
 }
 _updated_at: dict[str, int] = {k: int(time.time()) for k in ASSETS}
 _last_fetch: float = 0.0

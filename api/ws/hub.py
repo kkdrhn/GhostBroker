@@ -48,36 +48,40 @@ manager = ConnectionManager()
 
 # ── WebSocket Endpoint ─────────────────────────────────────────────────────────
 @websocket_router.websocket("/ws")
-async def websocket_endpoint(ws: WebSocket) -> None:
+async def websocket_endpoint(ws: WebSocket, channels: str = "") -> None:
     """
-    Multiplex WebSocket. Client sends:
-      { "subscribe": "channel_name", "params": {...} }
-    Server pushes events to subscribed channels.
-
-    Channels:
-      market.trades
-      market.orderbook.{commodity}
-      market.price.{commodity}
-      agent.lifecycle
-      agent.decisions
-      engine.batch
-      token.burns
-      stake.rewards
-      partnerships
+    Multiplex WebSocket.
+    ?channels=channel1,channel2 ile otomatik subscribe olur.
+    Client ayrıca { "subscribe": "channel_name" } gönderebilir.
     """
     await ws.accept()
     active_channels: set[str] = set()
 
+    # Query parametresi ile gelen kanalları otomatik subscribe et
+    if channels:
+        for ch in channels.split(","):
+            ch = ch.strip()
+            if ch:
+                async with _lock:
+                    _subscribers[ch].add(ws)
+                active_channels.add(ch)
+                logger.info("Auto-subscribed: channel=%s", ch)
+
     try:
         while True:
-            raw = await ws.receive_text()
+            try:
+                raw = await asyncio.wait_for(ws.receive_text(), timeout=30)
+            except asyncio.TimeoutError:
+                # Heartbeat ping
+                await ws.send_text(json.dumps({"type": "ping"}))
+                continue
+
             try:
                 msg = json.loads(raw)
             except json.JSONDecodeError:
                 await ws.send_text(json.dumps({"error": "Invalid JSON"}))
                 continue
 
-            action  = msg.get("subscribe") or msg.get("unsubscribe")
             channel = _resolve_channel(msg)
 
             if not channel:
@@ -116,6 +120,7 @@ def _resolve_channel(msg: dict) -> str | None:
     VALID = {
         "market.trades", "agent.lifecycle", "agent.decisions",
         "engine.batch", "token.burns", "stake.rewards", "partnerships",
+        "oracle.prices", "chain.block",
     }
     return ch if ch in VALID else None
 

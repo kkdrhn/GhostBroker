@@ -50,6 +50,16 @@ app.include_router(oracle.router,       prefix="/v1/oracle",       tags=["Oracle
 app.include_router(websocket_router)
 
 STORE_PATH = Path(os.getenv("AGENT_STORE_PATH", "data/agents.json"))
+
+# Tüm data path'leri main.py'nin bulunduğu proje kökünden mutlak olarak hesaplanır
+_BASE_DIR        = Path(__file__).parent.parent   # /Users/x/Desktop/monad
+_DECISIONS_DIR   = _BASE_DIR / "data" / "decisions"
+_DEC_ALL_PATH    = _BASE_DIR / "data" / "decisions_all.json"
+_TRADES_PATH     = _BASE_DIR / "data" / "trades.json"
+# STORE_PATH'i de mutlak hale getir
+if not STORE_PATH.is_absolute():
+    STORE_PATH = _BASE_DIR / STORE_PATH
+_DECISIONS_DIR.mkdir(parents=True, exist_ok=True)
 COMMODITIES = ["ETH", "SOL", "MATIC", "BNB", "MON"]
 
 # sys.path'e proje kökünü ekle (agents.* import için)
@@ -271,33 +281,27 @@ async def _agent_ticker() -> None:
                 }
 
                 # Agent'a özel decisions dosyası
-                dec_path = Path(f"data/decisions/{token_id}.json")
-                dec_path.parent.mkdir(parents=True, exist_ok=True)
-                history: list = []
-                if dec_path.exists():
-                    try:
-                        history = json.loads(dec_path.read_text())
-                    except Exception:
-                        history = []
+                dec_path = _DECISIONS_DIR / f"{token_id}.json"
+                try:
+                    history: list = json.loads(dec_path.read_text()) if dec_path.exists() else []
+                except Exception:
+                    history = []
                 history.append(dec_entry)
                 if len(history) > 1000:
                     history = history[-1000:]
                 dec_path.write_text(json.dumps(history, indent=2))
 
                 # Global decisions log (tüm agentlar)
-                global_dec_path = Path("data/decisions_all.json")
-                global_dec: list = []
-                if global_dec_path.exists():
-                    try:
-                        global_dec = json.loads(global_dec_path.read_text())
-                    except Exception:
-                        global_dec = []
+                try:
+                    global_dec: list = json.loads(_DEC_ALL_PATH.read_text()) if _DEC_ALL_PATH.exists() else []
+                except Exception:
+                    global_dec = []
                 global_dec.append(dec_entry)
                 if len(global_dec) > 2000:
                     global_dec = global_dec[-2000:]
-                global_dec_path.write_text(json.dumps(global_dec, indent=2))
+                _DEC_ALL_PATH.write_text(json.dumps(global_dec, indent=2))
 
-                # Global trades log
+                # Global trades log (sadece BID/ASK)
                 if action in ("BID", "ASK"):
                     trade_entry = {
                         "commodity":  commodity,
@@ -309,17 +313,14 @@ async def _agent_ticker() -> None:
                         "side":       action,
                         "timestamp":  int(time.time()),
                     }
-                    trades_path = Path("data/trades.json")
-                    trades_log: list = []
-                    if trades_path.exists():
-                        try:
-                            trades_log = json.loads(trades_path.read_text())
-                        except Exception:
-                            trades_log = []
+                    try:
+                        trades_log: list = json.loads(_TRADES_PATH.read_text()) if _TRADES_PATH.exists() else []
+                    except Exception:
+                        trades_log = []
                     trades_log.append(trade_entry)
                     if len(trades_log) > 2000:
                         trades_log = trades_log[-2000:]
-                    trades_path.write_text(json.dumps(trades_log, indent=2))
+                    _TRADES_PATH.write_text(json.dumps(trades_log, indent=2))
 
             # Güncellenmiş agentleri kaydet
             STORE_PATH.write_text(json.dumps(raw_agents, indent=2))

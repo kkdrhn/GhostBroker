@@ -62,7 +62,7 @@ function toUICommodity(f: OracleFeedResponse) {
   };
 }
 
-const COMMODITY_LIST: Commodity[] = ['ETH', 'SOL', 'MATIC', 'BNB'];
+const COMMODITY_LIST: Commodity[] = ['ETH', 'MON', 'SOL', 'MATIC', 'BNB'];
 
 const Arena = () => {
   const { recentTrades, handleWSEvent, setAgents, setLeaderboard, prices } = useGhostStore();

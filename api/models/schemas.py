@@ -205,6 +205,7 @@ class BurnEventResponse(BaseModel):
 # ── Oracle ─────────────────────────────────────────────────────────────────────
 class OracleFeedResponse(BaseModel):
     asset:      str
+    commodity:  str = ""   # frontend CommodityTicker için alias
     price:      float
     confidence: float
     updated_at: int

@@ -8,10 +8,10 @@ interface CommodityTickerProps {
   className?: string;
 }
 
-const Sparkline: React.FC<{ data: number[]; color: string; width?: number; height?: number }> = ({
+  const Sparkline: React.FC<{ data: number[]; color: string; width?: number; height?: number }> = ({
   data, color, width = 80, height = 28,
 }) => {
-  if (!data || data.length < 2) {
+  if (!data || data.length < 2 || data.some(isNaN)) {
     return (
       <svg width={width} height={height} className="shrink-0 opacity-30">
         <line x1="0" y1={height / 2} x2={width} y2={height / 2} stroke={color} strokeWidth="1.5" />
@@ -22,8 +22,10 @@ const Sparkline: React.FC<{ data: number[]; color: string; width?: number; heigh
   const max = Math.max(...data);
   const range = max - min || 1;
   const points = data.map((v, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - ((v - min) / range) * (height - 4) - 2;
+    let x = (i / (data.length - 1)) * width;
+    let y = height - ((v - min) / range) * (height - 4) - 2;
+    if (isNaN(x)) x = 0;
+    if (isNaN(y)) y = height / 2;
     return `${x.toFixed(1)},${y.toFixed(1)}`;
   }).join(' ');
 
