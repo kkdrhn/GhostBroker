@@ -53,7 +53,7 @@ const AgentDetail = () => {
   const { data: decisionPage, isLoading: decLoading } = useQuery({
     queryKey: ['decisions', tokenId, decPage],
     queryFn: async () => {
-      const res = await fetch(`http://localhost:8000/v1/agents/${tokenId}/decisions?page=${decPage}&limit=${DEC_PAGE_SIZE}`);
+      const res = await fetch(`${import.meta.env.VITE_API_URL ?? 'http://localhost:8000'}/v1/agents/${tokenId}/decisions?page=${decPage}&limit=${DEC_PAGE_SIZE}`);
       if (!res.ok) return { items: [], total: 0, total_pages: 1 };
       const data = await res.json();
       // Eski liste formatı veya yeni sayfalı format

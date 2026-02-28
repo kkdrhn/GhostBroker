@@ -18,7 +18,7 @@ interface PagedResult {
   items: Record<string, unknown>[];
 }
 
-const API = 'http://localhost:8000';
+const API = import.meta.env.VITE_API_URL ?? 'http://localhost:8000';
 const PAGE_SIZE = 25;
 
 const formatTime = (ts: number) => {
