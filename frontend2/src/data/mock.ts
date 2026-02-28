@@ -13,7 +13,7 @@ export const MOCK_AGENTS: Agent[] = [
   { id: '8', name: 'ByteReaper', tier: 'ACTIVE', owner: addr(8), riskDNA: { riskAppetite: 48, strategy: 'conservative', startingCapital: 7000 }, capital: 7800, maxCapital: 9000, winRate: 55.3, totalTrades: 289, profitFactor: 1.35, maxDrawdown: 14.2, avgTradeDuration: '11.2 blocks', reputation: 71, totalStaked: 12000, apyMultiplier: 1.4, createdAtBlock: 103000 },
 ];
 
-const commodities = ['GHOST_ORE', 'PHANTOM_GAS', 'VOID_CHIP', 'MON_USDC'] as const;
+const commodities = ['ETH', 'SOL', 'MATIC', 'BNB'] as const;
 
 export const generateTradeEntry = (index: number): TradeEntry => {
   const agents = MOCK_AGENTS.filter(a => a.tier !== 'BANKRUPT');
@@ -43,9 +43,9 @@ export const MOCK_DECISIONS: Decision[] = Array.from({ length: 20 }, (_, i) => (
   price: +(Math.random() * 10 + 1).toFixed(2),
   quantity: Math.floor(Math.random() * 30) + 1,
   reasoning: [
-    'Detected price divergence between GHOST_ORE spot and futures. Moving to capture 2.3% spread before convergence.',
+    'Detected price divergence between ETH spot and futures. Moving to capture 2.3% spread before convergence.',
     'Market momentum indicators suggest overbought conditions. Reducing exposure to minimize drawdown risk.',
-    'Cross-correlation analysis shows PHANTOM_GAS lagging VOID_CHIP by 3 blocks. Positioning for mean reversion.',
+    'Cross-correlation analysis shows SOL lagging BNB by 3 blocks. Positioning for mean reversion.',
     'Partnership opportunity detected with GhostPrime. Combined capital enables larger position sizes with shared risk.',
   ][i % 4],
   confidence: Math.floor(Math.random() * 40) + 60,
@@ -63,17 +63,17 @@ export const MOCK_STAKERS: Staker[] = [
 export const MOCK_LIFECYCLE: LifecycleEvent[] = [
   { type: 'CREATED', block: 100200, timestamp: Date.now() - 86400000 * 7, details: 'Agent minted with aggressive strategy' },
   { type: 'ELITE_PROMOTION', block: 102800, timestamp: Date.now() - 86400000 * 4, details: 'Win rate exceeded 70% threshold' },
-  { type: 'PARTNERSHIP', block: 103500, timestamp: Date.now() - 86400000 * 2, details: 'Formed partnership with VoidRunner for GHOST_ORE arbitrage' },
+  { type: 'PARTNERSHIP', block: 103500, timestamp: Date.now() - 86400000 * 2, details: 'Formed partnership with VoidRunner for ETH arbitrage' },
 ];
 
 const genHistory = (base: number, volatility: number) =>
   Array.from({ length: 50 }, (_, i) => +(base + Math.sin(i * 0.3) * volatility + (Math.random() - 0.5) * volatility * 0.5).toFixed(2));
 
 export const MOCK_COMMODITIES: CommodityPrice[] = [
-  { commodity: 'GHOST_ORE', label: 'GHOST_ORE', price: 4.32, change24h: 5.7, history: genHistory(4, 0.8) },
-  { commodity: 'PHANTOM_GAS', label: 'PHANTOM_GAS', price: 1.87, change24h: -2.3, history: genHistory(2, 0.4) },
-  { commodity: 'VOID_CHIP', label: 'VOID_CHIP', price: 12.45, change24h: 1.2, history: genHistory(12, 2) },
-  { commodity: 'MON_USDC', label: 'MON/USDC', price: 0.42, change24h: -0.8, history: genHistory(0.4, 0.05) },
+  { commodity: 'ETH', label: 'ETH', price: 1900.0, change24h: 1.2, history: genHistory(1900, 50) },
+  { commodity: 'SOL', label: 'SOL', price: 80.5, change24h: -1.5, history: genHistory(80, 3) },
+  { commodity: 'MATIC', label: 'MATIC', price: 0.55, change24h: 0.8, history: genHistory(0.55, 0.02) },
+  { commodity: 'BNB', label: 'BNB', price: 600.0, change24h: 0.5, history: genHistory(600, 10) },
 ];
 
 export const generateOrderBook = (basePrice: number): { bids: OrderBookEntry[]; asks: OrderBookEntry[] } => {
@@ -96,9 +96,9 @@ export const MOCK_STAKE_POSITIONS: StakePosition[] = [
 ];
 
 export const MOCK_OPEN_ORDERS: OpenOrder[] = [
-  { id: 'ord-1', side: 'buy', asset: 'GHOST_ORE', price: 4.15, quantity: 25, filledPercent: 60 },
-  { id: 'ord-2', side: 'sell', asset: 'PHANTOM_GAS', price: 2.05, quantity: 100, filledPercent: 0 },
-  { id: 'ord-3', side: 'buy', asset: 'VOID_CHIP', price: 11.80, quantity: 10, filledPercent: 30 },
+  { id: 'ord-1', side: 'buy', asset: 'ETH', price: 1890.0, quantity: 0.01, filledPercent: 60 },
+  { id: 'ord-2', side: 'sell', asset: 'SOL', price: 82.0, quantity: 1, filledPercent: 0 },
+  { id: 'ord-3', side: 'buy', asset: 'BNB', price: 595.0, quantity: 0.05, filledPercent: 30 },
 ];
 
 export const MOCK_CAPITAL_HISTORY = Array.from({ length: 100 }, (_, i) => ({

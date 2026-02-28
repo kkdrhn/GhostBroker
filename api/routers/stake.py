@@ -11,6 +11,12 @@ async def list_vaults():
     return []
 
 
+@router.get("/{agent_id}", response_model=dict)
+async def get_stake_by_agent(agent_id: int):
+    """Stake info for an agent — returns empty stub so frontend doesn't 404."""
+    return {"agent_id": agent_id, "total_staked": "0", "share_price": "1", "apy": 0.0}
+
+
 @router.get("/vaults/{agent_id}", response_model=VaultResponse)
 async def get_vault(agent_id: int):
     """Vault details: TVL, share price, APY multiplier."""

@@ -11,11 +11,33 @@ async def leaderboard(limit: int = Query(20, le=100)):
     return []
 
 
-@router.get("/{agent_id}", response_model=ReputationResponse)
+@router.get("/{agent_id}", response_model=dict)
 async def get_reputation(agent_id: int):
-    """Full score breakdown: win-rate, profit-factor, drawdown, composite."""
-    from fastapi import HTTPException
-    raise HTTPException(status_code=404, detail="Agent not found")
+    """Full score breakdown — stub that returns defaults so frontend doesn't 404."""
+    import json, os
+    path = os.path.join(os.path.dirname(__file__), "../../data/agents.json")
+    try:
+        agents = json.loads(open(path).read())
+        agent = next((a for a in agents if a["token_id"] == agent_id), None)
+    except Exception:
+        agent = None
+    if agent is None:
+        from fastapi import HTTPException
+        raise HTTPException(status_code=404, detail="Agent not found")
+    wins = agent.get("win_count", 0)
+    losses = agent.get("loss_count", 0)
+    total = wins + losses
+    win_rate = (wins / total) if total > 0 else 0.0
+    return {
+        "agent_id": agent_id,
+        "composite_score": agent.get("reputation_score", 5000),
+        "win_rate": round(win_rate, 4),
+        "profit_factor": 1.0,
+        "max_drawdown": 0.0,
+        "win_count": wins,
+        "loss_count": losses,
+        "tier": "ACTIVE",
+    }
 
 
 @router.get("/{agent_id}/history")

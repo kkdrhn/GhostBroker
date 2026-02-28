@@ -10,13 +10,13 @@ import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
 import type { Commodity, TradeResponse } from '@/types';
 
-const COMMODITIES: Commodity[] = ['GHOST_ORE', 'PHANTOM_GAS', 'VOID_CHIP', 'MON_USDC'];
+const COMMODITIES: Commodity[] = ['ETH', 'SOL', 'MATIC', 'BNB'];
 const wei2mon = (wei: string) => Number(BigInt(wei) / BigInt('1000000000')) / 1e9;
 const formatTime = (ts: number) => new Date(ts > 1e12 ? ts : ts * 1000)
   .toLocaleTimeString('en-US', { hour12: false });
 
 const Market = () => {
-  const [selectedCommodity, setSelectedCommodity] = useState<Commodity>('GHOST_ORE');
+  const [selectedCommodity, setSelectedCommodity] = useState<Commodity>('ETH');
   const { handleWSEvent, orderBooks } = useGhostStore();
 
   // WS: subscribe to orderbook channel
